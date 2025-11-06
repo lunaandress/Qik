@@ -2,4 +2,19 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="primary">#6200EE</color>
+    <color name="primaryVariant">#3700B3</color>
+    <color name="gray_dark">#616161</color>
+
+    <!-- Colores principales -->
+    <color name="purple_500">#7B4BFF</color>       <!-- Color principal vibrante -->
+    <color name="purple_700">#5A2BCC</color>       <!-- Color oscuro para ripple/sombra -->
+    <color name="purple_200">#C5B7FF</color>       <!-- Color suave para backgrounds o acentos -->
+
+    <!-- Neutros -->
+
+    <color name="gray_100">#F5F5F5</color>         <!-- Fondo claro -->
+    <color name="gray_600">#757575</color>         <!-- Texto secundario -->
+    <!-- Complementarios (opcionales) -->
+    <color name="yellow_500">#FFCC00</color>       <!-- Para destacar botones o alertas -->
 </resources>
