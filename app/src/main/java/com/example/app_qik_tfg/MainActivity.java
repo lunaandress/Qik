@@ -1,7 +1,9 @@
 package com.example.app_qik_tfg;
 
-
+import android.content.Intent;
 import android.os.Bundle;
+import android.widget.Button;
+
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -13,6 +15,11 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
+        Button btnViewMenu = findViewById(R.id.btnViewMenu);
 
+        btnViewMenu.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, MenuActivity.class);
+            startActivity(intent);
+        });
     }
 }
