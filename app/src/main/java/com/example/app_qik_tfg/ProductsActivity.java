@@ -43,8 +43,8 @@ public class ProductsActivity extends AppCompatActivity {
 
         switch (category) {
 
-            case "Bebidas":
-            case "Bebidassss":  // por si mantienes el nombre anterior
+
+            case "Bebidas":  // por si mantienes el nombre anterior
                 products.add(new Product("Coca-Cola", 1.50, R.drawable.ic_launcher_background));
                 products.add(new Product("Agua", 1.00, R.drawable.ic_launcher_background));
                 products.add(new Product("Fanta Naranja", 1.50, R.drawable.ic_launcher_background));

@@ -27,7 +27,7 @@
 
         <!-- DECLARACION DE LAS  DEMAS ACTIVIDADES  -->
         <activity android:name=".ProductsActivity" />
-
+        <activity android:name=".OrderSummaryActivity" />
     </application>
 
 </manifest>
