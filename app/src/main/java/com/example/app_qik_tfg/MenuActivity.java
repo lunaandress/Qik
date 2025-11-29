@@ -4,17 +4,19 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.button.MaterialButton;
+
 public class MenuActivity extends AppCompatActivity {
 
-    // Declaras un ListView donde mostrarás las categorías
     ListView lvCategories;
+    MaterialButton btnResumenPedido;
 
-    // Arreglo con las categorías que se mostrarán en el ListView
-    String[] categories = {"Bebidassss", "Comidas", "Postres"};
+    String[] categories = {"Bebidas", "Comidas", "Postres"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,26 +24,36 @@ public class MenuActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_menu);
 
-        // Conectas el ListView del layout con la variable en la clase
         lvCategories = findViewById(R.id.lvCategories);
+        btnResumenPedido = findViewById(R.id.ResumenPedido);
 
-        // Creas un adaptador que convierte el arreglo en elementos visuales de lista
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_list_item_1, categories);
-
-        // Asignas el adaptador al ListView
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_list_item_1,
+                categories
+        );
         lvCategories.setAdapter(adapter);
 
-        // Evento al hacer clic en un ítem de la lista
+        // Al pulsar una categoría → abre ProductsActivity
         lvCategories.setOnItemClickListener((parent, view, position, id) -> {
-
-            // Obtienes la categoría seleccionada
             String category = categories[position];
-
-            // Lanzar ProductsActivity con el nombre de la categoría
             Intent intent = new Intent(MenuActivity.this, ProductsActivity.class);
             intent.putExtra("category", category);
             startActivity(intent);
+        });
+
+        // Botón "Resumen de pedido"
+        btnResumenPedido.setOnClickListener(v -> {
+            // Miramos si hay algo en el pedido
+            if (PedidoSingleton.getInstance().getPedido().isEmpty()) {
+                Toast.makeText(this,
+                        "No hay productos en el pedido",
+                        Toast.LENGTH_SHORT
+                ).show();
+            } else {
+                Intent intent = new Intent(MenuActivity.this, OrderSummaryActivity.class);
+                startActivity(intent);
+            }
         });
     }
 }
