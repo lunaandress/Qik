@@ -1,71 +1,138 @@
 package com.example.app_qik_tfg;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 
 public class ProductsActivity extends AppCompatActivity {
 
+    private static final String TAG = "ProductsActivity";
+
     ListView lvProducts;
     TextView tvCategoryName;
     ArrayList<Product> products;
+    FirebaseFirestore db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_products);
 
+        Log.d(TAG, "onCreate iniciado");
+
         tvCategoryName = findViewById(R.id.tvCategoryName);
         lvProducts = findViewById(R.id.lvProducts);
-
         products = new ArrayList<>();
 
-        // Obtener categoría desde el intent
+        // Inicializar Firestore
+        db = FirebaseFirestore.getInstance();
+        Log.d(TAG, "Firestore inicializado");
+
+        // Obtener categoría desde el Intent
         String category = getIntent().getStringExtra("category");
+        Log.d(TAG, "Categoría recibida por Intent: [" + category + "]");
+
         tvCategoryName.setText(category);
 
-        // Cargar productos locales (versión intermedia)
-        cargarProductosLocalmente(category);
-
-        // Adaptador
-        ProductAdapter adapter = new ProductAdapter(this, products);
-        lvProducts.setAdapter(adapter);
+        // Cargar productos desde Firestore
+        cargarProductosDesdeFirestore(category);
     }
 
-    private void cargarProductosLocalmente(String category) {
+    private void cargarProductosDesdeFirestore(String category) {
 
-        // Limpia la lista por si acaso
-        products.clear();
+        Log.d(TAG, "Inicio carga de productos para categoría: [" + category + "]");
 
-        switch (category) {
+        db.collection("restaurantes")
+                .document("restaurante_1")
+                .collection("producto")
+                .whereEqualTo("categoría", category)
+                .get()
+                .addOnCompleteListener(task -> {
 
+                    if (task.isSuccessful() && task.getResult() != null) {
 
-            case "Bebidas":  // por si mantienes el nombre anterior
-                products.add(new Product("Coca-Cola", 1.50, R.drawable.ic_launcher_background));
-                products.add(new Product("Agua", 1.00, R.drawable.ic_launcher_background));
-                products.add(new Product("Fanta Naranja", 1.50, R.drawable.ic_launcher_background));
-                break;
+                        products.clear();
+                        int count = 0;
 
-            case "Comidas":
-                products.add(new Product("Hamburguesa", 6.50, R.drawable.ic_launcher_background));
-                products.add(new Product("Pizza", 7.99, R.drawable.ic_launcher_background));
-                products.add(new Product("Perrito Caliente", 3.50, R.drawable.ic_launcher_background));
-                break;
+                        Log.d(TAG, "Consulta Firestore OK. Documentos encontrados: "
+                                + task.getResult().size());
 
-            case "Postres":
-                products.add(new Product("Tarta de Queso", 3.20, R.drawable.ic_launcher_background));
-                products.add(new Product("Helado Vainilla", 2.00, R.drawable.ic_launcher_background));
-                products.add(new Product("Brownie", 2.80, R.drawable.ic_launcher_background));
-                break;
-        }
+                        for (QueryDocumentSnapshot doc : task.getResult()) {
 
-        // Inicializamos cantidad en 0
-        for (Product p : products) {
-            p.setCantidad(0);
-        }
+                            String docId = doc.getId();
+                            String nombre = doc.getString("nombre");
+                            Double precio = doc.getDouble("precio");
+                            String imgName = doc.getString("img");
+
+                            Log.d(TAG, "Documento ID: " + docId);
+                            Log.d(TAG, " → nombre: " + nombre);
+                            Log.d(TAG, " → precio: " + precio);
+                            Log.d(TAG, " → img: " + imgName);
+
+                            int imgResId = R.drawable.ic_launcher_background;
+
+                            if (imgName != null && !imgName.trim().isEmpty()) {
+                                String drawableName = imgName
+                                        .replace(".jpg", "")
+                                        .replace(".png", "")
+                                        .trim();
+
+                                imgResId = getResources().getIdentifier(
+                                        drawableName,
+                                        "drawable",
+                                        getPackageName()
+                                );
+
+                                if (imgResId == 0) {
+                                    Log.w(TAG, "Imagen no encontrada en drawable: "
+                                            + drawableName + ", usando imagen por defecto");
+                                    imgResId = R.drawable.ic_launcher_background;
+                                }
+                            }
+
+                            Product product = new Product(
+                                    nombre != null ? nombre : "",
+                                    precio != null ? precio : 0,
+                                    imgResId
+                            );
+
+                            product.setCantidad(0);
+                            products.add(product);
+                            count++;
+                        }
+
+                        Log.d(TAG, "Total productos cargados en lista: " + count);
+
+                        ProductAdapter adapter = new ProductAdapter(this, products);
+                        lvProducts.setAdapter(adapter);
+
+                        if (count == 0) {
+                            Log.w(TAG, "No se encontraron productos para esta categoría");
+                            Toast.makeText(
+                                    this,
+                                    "No se encontraron productos en la categoría seleccionada",
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        }
+
+                    } else {
+                        Log.e(TAG, "Error al obtener productos de Firestore",
+                                task.getException());
+                        Toast.makeText(
+                                this,
+                                "Error al cargar productos",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+                });
     }
 }
