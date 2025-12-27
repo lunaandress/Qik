@@ -33,17 +33,21 @@ public class ProductsActivity extends AppCompatActivity {
         lvProducts = findViewById(R.id.lvProducts);
         products = new ArrayList<>();
 
-        // Inicializar Firestore
         db = FirebaseFirestore.getInstance();
         Log.d(TAG, "Firestore inicializado");
 
-        // Obtener categoría desde el Intent
         String category = getIntent().getStringExtra("category");
         Log.d(TAG, "Categoría recibida por Intent: [" + category + "]");
 
+        if (category == null || category.trim().isEmpty()) {
+            Log.e(TAG, "Categoría null o vacía — cerrando actividad");
+            Toast.makeText(this, "Categoría inválida", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
         tvCategoryName.setText(category);
 
-        // Cargar productos desde Firestore
         cargarProductosDesdeFirestore(category);
     }
 
@@ -61,61 +65,64 @@ public class ProductsActivity extends AppCompatActivity {
                     if (task.isSuccessful() && task.getResult() != null) {
 
                         products.clear();
-                        int count = 0;
 
                         Log.d(TAG, "Consulta Firestore OK. Documentos encontrados: "
                                 + task.getResult().size());
 
                         for (QueryDocumentSnapshot doc : task.getResult()) {
 
-                            String docId = doc.getId();
-                            String nombre = doc.getString("nombre");
-                            Double precio = doc.getDouble("precio");
-                            String imgName = doc.getString("img");
+                            try {
+                                String docId = doc.getId();
+                                String nombre = doc.getString("nombre");
+                                Double precio = doc.getDouble("precio");
+                                String imgName = doc.getString("img");
 
-                            Log.d(TAG, "Documento ID: " + docId);
-                            Log.d(TAG, " → nombre: " + nombre);
-                            Log.d(TAG, " → precio: " + precio);
-                            Log.d(TAG, " → img: " + imgName);
+                                Log.d(TAG, "Documento ID: " + docId);
+                                Log.d(TAG, " → nombre: " + nombre);
+                                Log.d(TAG, " → precio: " + precio);
+                                Log.d(TAG, " → img: " + imgName);
 
-                            int imgResId = R.drawable.ic_launcher_background;
+                                int imgResId = R.drawable.ic_launcher_background;
 
-                            if (imgName != null && !imgName.trim().isEmpty()) {
-                                String drawableName = imgName
-                                        .replace(".jpg", "")
-                                        .replace(".png", "")
-                                        .trim();
+                                if (imgName != null && !imgName.trim().isEmpty()) {
+                                    String drawableName = imgName
+                                            .replace(".jpg", "")
+                                            .replace(".png", "")
+                                            .trim()
+                                            .toLowerCase();
 
-                                imgResId = getResources().getIdentifier(
-                                        drawableName,
-                                        "drawable",
-                                        getPackageName()
+                                    imgResId = getResources().getIdentifier(
+                                            drawableName,
+                                            "drawable",
+                                            getPackageName()
+                                    );
+
+                                    if (imgResId == 0) {
+                                        Log.w(TAG, "Imagen no encontrada en drawable: " + drawableName);
+                                        imgResId = R.drawable.ic_launcher_background;
+                                    }
+                                }
+
+                                Product product = new Product(
+                                        nombre != null ? nombre : "Sin nombre",
+                                        precio != null ? precio : 0,
+                                        imgResId
                                 );
 
-                                if (imgResId == 0) {
-                                    Log.w(TAG, "Imagen no encontrada en drawable: "
-                                            + drawableName + ", usando imagen por defecto");
-                                    imgResId = R.drawable.ic_launcher_background;
-                                }
+                                product.setCantidad(0);
+                                products.add(product);
+
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error procesando documento: " + doc.getId(), e);
                             }
-
-                            Product product = new Product(
-                                    nombre != null ? nombre : "",
-                                    precio != null ? precio : 0,
-                                    imgResId
-                            );
-
-                            product.setCantidad(0);
-                            products.add(product);
-                            count++;
                         }
 
-                        Log.d(TAG, "Total productos cargados en lista: " + count);
+                        Log.d(TAG, "Total productos cargados en lista: " + products.size());
 
                         ProductAdapter adapter = new ProductAdapter(this, products);
-                        lvProducts.setAdapter(adapter);
+                         lvProducts.setAdapter(adapter);
 
-                        if (count == 0) {
+                        if (products.isEmpty()) {
                             Log.w(TAG, "No se encontraron productos para esta categoría");
                             Toast.makeText(
                                     this,
@@ -125,8 +132,7 @@ public class ProductsActivity extends AppCompatActivity {
                         }
 
                     } else {
-                        Log.e(TAG, "Error al obtener productos de Firestore",
-                                task.getException());
+                        Log.e(TAG, "Error al obtener productos de Firestore", task.getException());
                         Toast.makeText(
                                 this,
                                 "Error al cargar productos",

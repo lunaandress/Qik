@@ -1,6 +1,7 @@
 package com.example.app_qik_tfg;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -8,58 +9,127 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class OrderSummaryActivity extends AppCompatActivity {
 
-    // Elementos de la interfaz
+    private static final String TAG = "OrderSummaryActivity";
+
+    // UI
     private ListView lvResumen;
     private TextView tvTotal;
     private Button btnEnviarPedido;
 
+    // Datos
+    private List<Product> pedido;
+
+    // Firestore
+    private FirebaseFirestore db;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // Infla el layout de la actividad (asegúrate de que exista activity_order_summary.xml)
         setContentView(R.layout.activity_order_summary);
 
-        // Asignación de vistas mediante IDs del layout
+        Log.d(TAG, "onCreate iniciado");
+
+        // Referencias UI
         lvResumen = findViewById(R.id.lvResumen);
         tvTotal = findViewById(R.id.tvTotal);
         btnEnviarPedido = findViewById(R.id.btnEnviarPedido);
 
-        // Obtener la lista de productos del pedido desde el Singleton
-        List<Product> pedido = PedidoSingleton.getInstance().getPedido();
+        // Inicializar Firestore
+        db = FirebaseFirestore.getInstance();
 
-        // Crear y asignar el adaptador personalizado que muestra el resumen del pedido
+        // Obtener el pedido desde el Singleton
+        pedido = PedidoSingleton.getInstance().getPedido();
+
+        // Asignar adaptador al ListView
         ResumenAdapter adapter = new ResumenAdapter(this, pedido);
         lvResumen.setAdapter(adapter);
 
-        // Calcular el total del pedido
+        // Calcular total y mostrarlo
+        mostrarTotal();
+
+        // Acción botón enviar
+        btnEnviarPedido.setOnClickListener(v -> enviarPedido());
+    }
+
+    /**
+     * Calcula el total del pedido y lo muestra en pantalla
+     */
+    private void mostrarTotal() {
         double total = 0;
+
         for (Product p : pedido) {
-            total += p.getPrice() * p.getCantidad(); // precio x cantidad
+            total += p.getPrice() * p.getCantidad();
         }
 
-        // Mostrar el total en el TextView formateado a 2 decimales
-        tvTotal.setText("Total: €" + String.format("%.2f", total));
+        tvTotal.setText("Total: €" + String.format(Locale.getDefault(), "%.2f", total));
+    }
 
-        // Acción del botón "Enviar Pedido"
-        btnEnviarPedido.setOnClickListener(v -> {
-            // Aquí solo es una simulación, solo se muestra un mensaje
-            Toast.makeText(this, "Pedido enviado (simulado)", Toast.LENGTH_SHORT).show();
+    /**
+     * Envía el pedido a Firestore
+     */
+    private void enviarPedido() {
 
-            // Limpiar el pedido almacenado en el Singleton
-            PedidoSingleton.getInstance().limpiarPedido();
+        if (pedido == null || pedido.isEmpty()) {
+            Toast.makeText(this, "El pedido está vacío", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-            // Cerrar la actividad y volver a la anterior
-            finish();
-        });
+        // Calcular total
+        double total = 0;
+        for (Product p : pedido) {
+            total += p.getPrice() * p.getCantidad();
+        }
+
+        // Convertir productos a formato Firestore
+        ArrayList<Map<String, Object>> listaProductos = new ArrayList<>();
+
+        for (Product p : pedido) {
+            if (p.getCantidad() > 0) {
+                Map<String, Object> prod = new HashMap<>();
+                prod.put("nombre", p.getName());
+                prod.put("precio", p.getPrice());
+                prod.put("cantidad", p.getCantidad());
+                listaProductos.add(prod);
+            }
+        }
+
+        // Mapa del pedido completo
+        Map<String, Object> pedidoMap = new HashMap<>();
+        pedidoMap.put("fecha", new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date()));
+        pedidoMap.put("total", total);
+        pedidoMap.put("productos", listaProductos);
+        pedidoMap.put("estado", "pendiente");
+
+        Log.d(TAG, "Enviando pedido: " + pedidoMap);
+
+        // Enviar a Firestore
+        db.collection("restaurantes")
+                .document("restaurante_1")
+                .collection("pedidos")
+                .add(pedidoMap)
+                .addOnSuccessListener(ref -> {
+                    Log.d(TAG, "Pedido guardado con ID: " + ref.getId());
+                    Toast.makeText(this, "Pedido enviado correctamente", Toast.LENGTH_LONG).show();
+
+                    // Limpiar pedido y cerrar
+                    PedidoSingleton.getInstance().limpiarPedido();
+                    finish();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error al guardar pedido", e);
+                    Toast.makeText(this, "Error al enviar el pedido", Toast.LENGTH_LONG).show();
+                });
     }
 }
-
-
-
-
-
